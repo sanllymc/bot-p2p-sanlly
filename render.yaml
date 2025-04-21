@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bot-p2p-sanlly
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TOKEN
+        value: TU_TOKEN_DEL_BOT
+      - key: CHAT_ID
+        value: TU_CHAT_ID
+      - key: SPREADSHEET_ID
+        value: TU_SPREADSHEET_ID
