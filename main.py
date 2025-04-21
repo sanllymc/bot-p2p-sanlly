@@ -5,7 +5,9 @@ import threading
 import time
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
+from flask import Flask, request
 
+# Configuración del bot
 TOKEN = "7264007059:AAE9xOJjxwU0DonrGoRpGOO6w5Px5NWKo5w"
 CHAT_ID = "1188735274"
 SPREADSHEET_ID = "15euGYYB9YE45VJDYnkzNVnTPBb3WsbSfwRKQvuz-wWk"
@@ -13,12 +15,12 @@ SPREADSHEET_ID = "15euGYYB9YE45VJDYnkzNVnTPBb3WsbSfwRKQvuz-wWk"
 bot = telebot.TeleBot(TOKEN)
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-import os
-with open("credentials.json", "w") as f:
-    f.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS_CONTENT"])
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+
+# Flask app para Webhook
+app = Flask(__name__)
 
 alertas_menor = []
 alertas_mayor = []
@@ -42,15 +44,11 @@ def registrar_operacion(tipo, precio, cantidad):
 
 @bot.message_handler(commands=["start", "help"])
 def ayuda(message):
-    texto = ("📌 *Bot P2P Sanlly* - Comandos disponibles:\n"
-             "/compra <precio> <cantidad>\n"
-             "/venta <precio> <cantidad>\n"
-             "/resumen\n"
-             "/balance\n"
-             "/borrar_ultima\n"
-             "/alerta_menor <precio>\n"
-             "/alerta_mayor <precio>\n"
-             "/cancelar_alertas")
+    texto = "📌 *Bot P2P Sanlly* - Comandos disponibles:\n"
+    texto += "/compra <precio> <cantidad>\n"
+    texto += "/venta <precio> <cantidad>\n"
+    texto += "/resumen\n/balance\n/borrar_ultima\n"
+    texto += "/alerta_menor <precio>\n/alerta_mayor <precio>\n/cancelar_alertas"
     bot.send_message(message.chat.id, texto, parse_mode="Markdown")
 
 @bot.message_handler(commands=["compra"])
@@ -142,8 +140,22 @@ def revisar_precio():
                     bot.send_message(CHAT_ID, f"🚀 USDT subió a RD${precio_dop} (≥ {obj})")
         time.sleep(CHECK_INTERVAL)
 
-hilo_alerta = threading.Thread(target=revisar_precio)
-hilo_alerta.daemon = True
-hilo_alerta.start()
+@app.route('/')
+def index():
+    return 'Bot P2P Sanlly activo'
 
-bot.infinity_polling()
+@app.route(f'/{TOKEN}', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return 'OK', 200
+
+if __name__ == '__main__':
+    bot.remove_webhook()
+    bot.set_webhook(url='https://bot-p2p-sanlly.onrender.com/' + TOKEN)
+    hilo_alerta = threading.Thread(target=revisar_precio)
+    hilo_alerta.daemon = True
+    hilo_alerta.start()
+    app.run(host='0.0.0.0', port=10000)
+
