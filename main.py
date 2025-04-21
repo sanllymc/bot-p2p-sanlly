@@ -13,6 +13,9 @@ SPREADSHEET_ID = "15euGYYB9YE45VJDYnkzNVnTPBb3WsbSfwRKQvuz-wWk"
 bot = telebot.TeleBot(TOKEN)
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+import os
+with open("credentials.json", "w") as f:
+    f.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS_CONTENT"])
 creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_key(SPREADSHEET_ID).sheet1
